@@ -2,8 +2,8 @@
 //  ContentView.swift
 //  tapt.
 //
-//  View utama - mengikuti HIG dan Apple Design Guidelines.
-//  Desain: monochrome palette + Liquid Glass aesthetic (iOS 26).
+//  View utama — HIG compliant, monochrome palette, Liquid Glass.
+//  Tap = single haptic. Long-press = continuous haptic until release.
 //
 
 import SwiftUI
@@ -60,6 +60,30 @@ struct ContentView: View {
                             )
                         )
                 )
+                .overlay(
+                    Circle()
+                        .strokeBorder(
+                            LinearGradient(
+                                gradient: Gradient(colors: [
+                                    Color.white.opacity(0.5),
+                                    Color.white.opacity(0.15),
+                                    Color.clear
+                                ]),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: viewModel.isGlowVisible ? 2 : 1
+                        )
+                        .allowsHitTesting(false)
+                )
+                .blur(radius: viewModel.isGlowVisible ? 6 : 0)
+                .opacity(viewModel.isGlowVisible ? 1 : 0.7)
+                .animation(
+                    viewModel.isGlowVisible
+                        ? .easeOut(duration: 0.25)
+                        : .easeIn(duration: 0.25),
+                    value: viewModel.isGlowVisible
+                )
 
             VStack(spacing: 10) {
                 Image(systemName: viewModel.selectedHaptic.icon)
@@ -73,43 +97,20 @@ struct ContentView: View {
         }
         .frame(width: 220, height: 220)
         .contentShape(Circle())
-        .simultaneousGesture(
-            LongPressGesture(minimumDuration: 0.3)
+        .highPriorityGesture(
+            LongPressGesture(minimumDuration: 0, maximumDistance: 100)
                 .onChanged { _ in
-                    viewModel.startLongPress()
+                    if !viewModel.isLongPressing {
+                        viewModel.startLongPress()
+                    }
                 }
                 .onEnded { _ in
-                    viewModel.endLongPress()
+                    if viewModel.isLongPressing {
+                        viewModel.endLongPress()
+                    } else {
+                        viewModel.triggerTap()
+                    }
                 }
-        )
-        .simultaneousGesture(
-            TapGesture()
-                .onEnded { _ in
-                    viewModel.triggerTap()
-                }
-        )
-        .overlay(
-            Circle()
-                .strokeBorder(
-                    LinearGradient(
-                        gradient: Gradient(colors: [
-                            Color.white.opacity(0.5),
-                            Color.white.opacity(0.15),
-                            Color.clear
-                        ]),
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: viewModel.isGlowVisible ? 2 : 1
-                )
-                .blur(radius: viewModel.isGlowVisible ? 6 : 0)
-                .opacity(viewModel.isGlowVisible ? 1 : 0)
-                .animation(
-                    viewModel.isGlowVisible
-                        ? .easeOut(duration: 0.25)
-                        : .easeIn(duration: 0.25),
-                    value: viewModel.isGlowVisible
-                )
         )
         .accessibilityLabel("Trigger \(viewModel.selectedHaptic.title) haptic")
         .accessibilityHint(viewModel.isLongPressing
