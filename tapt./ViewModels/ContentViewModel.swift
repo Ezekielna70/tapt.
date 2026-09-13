@@ -64,7 +64,13 @@ final class ContentViewModel: ObservableObject {
     /// Mulai long-press — memicu haptic berulang setiap ~120ms.
     /// Interval dipilih agar "continuous" terasa natural di tangan,
     /// konsisten dengan HIG haptic feedback untuk interaksi berkelanjutan.
+    ///
+    /// Guard isLongPressing agar onChanged (yang fire terus-menerus
+    /// selama gesture aktif) tidak menciptakan timer ganda.
     func startLongPress() {
+        // Jika sudah dalam mode long-press, jangan buat timer baru
+        guard !isLongPressing else { return }
+
         isLongPressing = true
         hasTriggered = true
         glowPulse()
