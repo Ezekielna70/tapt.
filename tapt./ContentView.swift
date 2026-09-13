@@ -5,15 +5,6 @@
 //  View utama - mengikuti HIG dan Apple Design Guidelines.
 //  Desain: monochrome palette + Liquid Glass aesthetic (iOS 26).
 //
-//  Layout:
-//  - Kartu tengah: lingkaran besar (tap target) yang memicu haptic.
-//  - Di bawah kartu: nama haptic yang sedang dipilih.
-//  - Di paling bawah: List scroll-y dengan semua jenis haptic,
-//    dikelompokkan per keluarga (Impact / Notification).
-//
-//  MVVM: View hanya menampilkan state dari ContentViewModel
-//  dan mengirim intent (tap, selection) kembali ke ViewModel.
-//
 
 import SwiftUI
 
@@ -23,14 +14,11 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Background: pure black - monochrome foundation.
                 Color.black.ignoresSafeArea()
 
                 VStack(spacing: 28) {
-                    // MARK: Big haptic trigger circle
                     bigTriggerCircle
 
-                    // MARK: Selected haptic title
                     VStack(spacing: 6) {
                         Text(viewModel.selectedHaptic.title)
                             .font(.title2.weight(.semibold))
@@ -43,47 +31,70 @@ struct ContentView: View {
                             .foregroundStyle(.white.opacity(0.6))
                     }
 
-                    // MARK: Haptic selection list
                     hapticList
                 }
                 .padding(.vertical, 28)
             }
             .statusBar(hidden: true)
         }
+        .onAppear {
+            viewModel.prepareAll()
+        }
     }
 
-    // MARK: - Big Trigger Circle
-
     private var bigTriggerCircle: some View {
-        Button(action: {
-            viewModel.triggerCurrent()
-        }) {
-            ZStack {
-                Circle()
-                    .fill(.ultraThinMaterial)
-                    .background(Circle().fill(Color.white.opacity(0.08)))
+        ZStack {
+            Circle()
+                .fill(.ultraThinMaterial)
+                .background(
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                gradient: Gradient(colors: [
+                                    Color.white.opacity(0.15),
+                                    Color.white.opacity(0.06),
+                                    Color.clear
+                                ]),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                )
 
-                VStack(spacing: 10) {
-                    Image(systemName: viewModel.selectedHaptic.icon)
-                        .font(.system(size: 52))
-                        .foregroundStyle(.white.opacity(0.85))
+            VStack(spacing: 10) {
+                Image(systemName: viewModel.selectedHaptic.icon)
+                    .font(.system(size: 52))
+                    .foregroundStyle(.white.opacity(0.85))
 
-                    Text("Tap")
-                        .font(.title3.weight(.medium))
-                        .foregroundStyle(.white.opacity(0.5))
-                }
+                Text("Tap")
+                    .font(.title3.weight(.medium))
+                    .foregroundStyle(.white.opacity(0.5))
             }
         }
-        .buttonStyle(.plain)
         .frame(width: 220, height: 220)
         .contentShape(Circle())
+        .simultaneousGesture(
+            LongPressGesture(minimumDuration: 0.3)
+                .onChanged { _ in
+                    viewModel.startLongPress()
+                }
+                .onEnded { _ in
+                    viewModel.endLongPress()
+                }
+        )
+        .simultaneousGesture(
+            TapGesture()
+                .onEnded { _ in
+                    viewModel.triggerTap()
+                }
+        )
         .overlay(
             Circle()
                 .strokeBorder(
                     LinearGradient(
                         gradient: Gradient(colors: [
-                            Color.white.opacity(0.45),
-                            Color.white.opacity(0.12),
+                            Color.white.opacity(0.5),
+                            Color.white.opacity(0.15),
                             Color.clear
                         ]),
                         startPoint: .topLeading,
@@ -101,16 +112,18 @@ struct ContentView: View {
                 )
         )
         .accessibilityLabel("Trigger \(viewModel.selectedHaptic.title) haptic")
-        .accessibilityHint("Double-tap to play this haptic pattern")
+        .accessibilityHint(viewModel.isLongPressing
+            ? "Holding for continuous feedback"
+            : "Tap for single, long-press for continuous haptic")
+        .accessibilityValue(viewModel.isLongPressing
+            ? "Continuous mode active"
+            : "Idle")
     }
-
-    // MARK: - Haptic Selection List
 
     private var hapticList: some View {
         ScrollView {
             LazyVStack(spacing: 0) {
-                ForEach(HapticGroup.allCases) { group in
-                    // Section header
+                ForEach(HapticGroup.allGroups) { group in
                     HStack {
                         Text(group.rawValue)
                             .font(.caption.weight(.semibold))
@@ -122,7 +135,6 @@ struct ContentView: View {
                     .padding(.horizontal, 24)
                     .padding(.vertical, 10)
 
-                    // Haptic rows
                     ForEach(group.haptics) { haptic in
                         HapticRowView(
                             haptic: haptic,
@@ -132,7 +144,7 @@ struct ContentView: View {
                         }
                     }
 
-                    if group != HapticGroup.allCases.last {
+                    if group != HapticGroup.allGroups.last {
                         Divider()
                             .background(Color.white.opacity(0.12))
                             .padding(.horizontal, 24)
@@ -141,10 +153,9 @@ struct ContentView: View {
             }
             .padding(.top, 8)
         }
+        .scrollBounceBehavior(.basedOnSize)
     }
 }
-
-// MARK: - Haptic Row
 
 private struct HapticRowView: View {
     let haptic: HapticType
@@ -215,15 +226,11 @@ private struct HapticRowView: View {
     }
 }
 
-// MARK: - Helper
-
 private extension HapticGroup {
     var haptics: [HapticType] {
         HapticType.allCases.filter { $0.group == self }
     }
 }
-
-// MARK: - Preview
 
 #Preview {
     ContentView()

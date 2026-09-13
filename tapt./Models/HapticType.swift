@@ -14,7 +14,7 @@ import Foundation
 
 /// Semua jenis haptic yang didukung oleh iOS,
 /// dikelompokkan berdasarkan keluarga feedback generator.
-enum HapticType: CaseIterable, Identifiable {
+enum HapticType: CaseIterable, Identifiable, Hashable {
 
     // --- Impact haptics (gerak fisik) ---
     case impactLight
@@ -74,9 +74,14 @@ enum HapticType: CaseIterable, Identifiable {
 }
 
 /// Kelompok haptic untuk section header di List.
-enum HapticGroup: String, CaseIterable, Identifiable {
+enum HapticGroup: String, CaseIterable, Identifiable, Hashable {
     case impact = "Impact Feedbacks"
     case notification = "Notification Feedbacks"
 
     var id: String { rawValue }
+
+    /// Array of all groups — for ForEach which requires RandomAccessCollection.
+    static var allGroups: [HapticGroup] {
+        [.impact, .notification]
+    }
 }
